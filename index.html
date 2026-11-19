@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ふわふわパン教室クイズ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF6E9; --card:#FFFDF8; --ink:#4A3220; --ink-soft:#7A5C3E;
+    --brown:#6B4226; --accent:#E8873A; --accent-dark:#C96A1E;
+    --good:#3E9B4F; --good-bg:#E6F5E9; --bad:#D9534F; --bad-bg:#FDECEA;
+    --line:#EBD9BE; --chip:#F7E8CF;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+    line-height:1.6;
+  }
+  .wrap{max-width:640px; margin:0 auto; padding:20px 16px 48px;}
+  .card{
+    background:var(--card); border:2px solid var(--line); border-radius:20px;
+    padding:24px 20px; box-shadow:0 4px 14px rgba(107,66,38,.08);
+  }
+  h1.title{
+    text-align:center; font-size:1.9rem; font-weight:900; color:var(--brown);
+    margin:8px 0 2px; cursor:pointer; user-select:none;
+  }
+  .subtitle{text-align:center; color:var(--ink-soft); font-weight:700; margin:0 0 20px;}
+  .bread-icon{text-align:center; font-size:2.6rem; line-height:1;}
+  label.field-label{display:block; font-weight:700; margin:18px 0 6px; color:var(--brown);}
+  .helper{font-size:.82rem; color:var(--ink-soft); margin:2px 0 0;}
+  input[type=text], select{
+    width:100%; padding:12px 14px; font-size:1rem; font-family:inherit;
+    border:2px solid var(--line); border-radius:12px; background:#fff; color:var(--ink);
+  }
+  input[type=text]:focus, select:focus{outline:none; border-color:var(--accent);}
+  .pill-group{display:flex; flex-wrap:wrap; gap:8px;}
+  .pill{
+    border:2px solid var(--line); background:#fff; color:var(--ink);
+    border-radius:999px; padding:8px 14px; font-family:inherit; font-weight:700;
+    font-size:.95rem; cursor:pointer;
+  }
+  .pill.selected{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn{
+    display:block; width:100%; padding:14px; margin-top:22px; border:none; border-radius:14px;
+    background:var(--accent); color:#fff; font-family:inherit; font-size:1.1rem; font-weight:900;
+    cursor:pointer; box-shadow:0 3px 0 var(--accent-dark);
+  }
+  .btn:active{transform:translateY(2px); box-shadow:none;}
+  .btn.secondary{background:#fff; color:var(--brown); border:2px solid var(--brown); box-shadow:none;}
+  .btn.small{width:auto; display:inline-block; padding:9px 16px; font-size:.95rem; margin-top:10px;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .link-btn{background:none; border:none; color:var(--accent-dark); font-family:inherit;
+    font-weight:700; cursor:pointer; text-decoration:underline; font-size:.95rem; padding:4px;}
+  .center{text-align:center;}
+  .camp-box{
+    margin-top:20px; border:2px dashed var(--accent); border-radius:14px; padding:14px;
+    background:#FFF3DF; display:none;
+  }
+  .camp-box.open{display:block;}
+  .camp-badge{
+    display:none; text-align:center; font-weight:900; color:var(--accent-dark); margin-top:10px;
+  }
+  .camp-badge.on{display:block;}
+  /* quiz */
+  .progress{font-weight:700; color:var(--ink-soft); margin-bottom:4px;}
+  .progress-bar{height:10px; background:var(--chip); border-radius:99px; overflow:hidden; margin-bottom:16px;}
+  .progress-bar > div{height:100%; background:var(--accent); transition:width .3s;}
+  .q-meta{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .chip{background:var(--chip); color:var(--brown); border-radius:999px; padding:2px 12px;
+    font-size:.8rem; font-weight:700;}
+  .q-text{font-size:1.2rem; font-weight:900; margin:6px 0 18px;}
+  .choice{
+    display:block; width:100%; text-align:left; padding:13px 15px; margin-bottom:10px;
+    border:2px solid var(--line); border-radius:12px; background:#fff; cursor:pointer;
+    font-family:inherit; font-size:1rem; color:var(--ink);
+  }
+  .choice:hover:not(:disabled){border-color:var(--accent);}
+  .choice.correct{background:var(--good-bg); border-color:var(--good); font-weight:700;}
+  .choice.wrong{background:var(--bad-bg); border-color:var(--bad); font-weight:700;}
+  .choice:disabled{cursor:default; opacity:.92;}
+  .explain{
+    margin-top:14px; border-radius:12px; padding:14px; display:none; font-size:.95rem;
+  }
+  .explain.show{display:block;}
+  .explain.ok{background:var(--good-bg);}
+  .explain.ng{background:var(--bad-bg);}
+  .explain .verdict{font-weight:900; font-size:1.05rem; margin-bottom:6px;}
+  .source-line{margin-top:10px; font-size:.85rem; color:var(--ink-soft);}
+  /* result */
+  .score-big{text-align:center; font-size:2.2rem; font-weight:900; color:var(--brown); margin:6px 0 0;}
+  .score-sub{text-align:center; color:var(--ink-soft); font-weight:700; margin:0 0 8px;}
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:.92rem;}
+  th, td{border-bottom:1px solid var(--line); padding:7px 6px; text-align:left; vertical-align:top;}
+  th{color:var(--brown); font-weight:900; white-space:nowrap;}
+  td.num, th.num{text-align:right; white-space:nowrap;}
+  .review-item{border:2px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fff;}
+  .review-item .rq{font-weight:900;}
+  .review-item .ra{font-size:.9rem; margin-top:4px;}
+  h2.section{color:var(--brown); font-size:1.25rem; margin:26px 0 6px; border-bottom:3px solid var(--chip); padding-bottom:4px;}
+  .note{font-size:.85rem; color:var(--ink-soft);}
+  .toast{
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
+    background:var(--brown); color:#fff; padding:10px 22px; border-radius:999px; font-weight:700;
+    opacity:0; pointer-events:none; transition:all .25s; z-index:60;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  /* modal */
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(74,50,32,.55); display:none; z-index:50;
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-bg.open{display:flex;}
+  .modal{
+    background:var(--card); width:100%; max-width:640px; max-height:82vh; overflow-y:auto;
+    border-radius:20px 20px 0 0; padding:22px 20px 30px;
+  }
+  .modal h3{margin:0 0 4px; color:var(--brown); font-size:1.1rem;}
+  .modal .date{font-size:.8rem; color:var(--ink-soft); margin-bottom:10px;}
+  .modal .body{white-space:pre-wrap; font-size:.95rem;}
+  /* event (projector) */
+  .event-wrap{max-width:900px;}
+  .event-title{text-align:center; font-size:2.4rem; font-weight:900; color:var(--brown); margin:10px 0 4px;}
+  .event-sub{text-align:center; font-weight:700; color:var(--ink-soft); margin:0 0 18px; font-size:1.1rem;}
+  .event-card{background:var(--card); border:2px solid var(--line); border-radius:20px; padding:20px; margin-bottom:20px;}
+  .event-card h2{margin:0 0 10px; color:var(--brown); font-size:1.6rem;}
+  .event-card table{font-size:1.25rem;}
+  .event-card td, .event-card th{padding:10px 8px;}
+  .rank-1{font-weight:900; color:var(--accent-dark);}
+  .hidden{display:none !important;}
+  .error-box{background:var(--bad-bg); border:2px solid var(--bad); border-radius:12px; padding:14px; margin-top:14px;}
+</style>
+</head>
+<body>
+
+<!-- ===== スタート画面 ===== -->
+<div class="wrap" id="view-start">
+  <div class="card">
+    <div class="bread-icon">🍞</div>
+    <h1 class="title" id="app-title">ふわふわパン教室クイズ</h1>
+    <p class="subtitle">FLATスタッフのためのパン知識クイズ</p>
+
+    <label class="field-label" for="input-name">名前（Talknoteに登録している名前）</label>
+    <input type="text" id="input-name" placeholder="例：中島勇" autocomplete="name">
+    <p class="helper">集計のため、Talknoteに登録している名前で入力してください</p>
+
+    <label class="field-label" for="select-store">所属</label>
+    <select id="select-store">
+      <option value="馬場FLAT">馬場FLAT</option>
+      <option value="馬場FLAThanare">馬場FLAThanare</option>
+      <option value="高円寺FLAT">高円寺FLAT</option>
+      <option value="目黒FLAT">目黒FLAT</option>
+      <option value="国立FLAT">国立FLAT</option>
+      <option value="グラムスドーム">グラムスドーム</option>
+      <option value="社外">社外</option>
+      <option value="その他">その他</option>
+    </select>
+
+    <div class="camp-badge" id="camp-badge"></div>
+    <div class="camp-box" id="camp-box">
+      <label class="field-label" for="input-camp" style="margin-top:0;">合宿モード（裏モード）</label>
+      <input type="text" id="input-camp" placeholder="合宿コードを入力">
+      <p class="helper">合宿コードが同じ人全員に、同じ問題セットが出題されます。結果は合宿ごとに集計されます。</p>
+      <button class="btn small secondary" id="btn-camp-rank" type="button">この合宿コードの順位を見る</button>
+      <button class="btn small secondary" id="btn-camp-off" type="button">合宿モードをやめる</button>
+    </div>
+
+    <label class="field-label">カテゴリ</label>
+    <div class="pill-group" id="category-group"></div>
+
+    <label class="field-label">レベル</label>
+    <div class="pill-group" id="level-group"></div>
+
+    <button class="btn" id="btn-start" type="button">クイズをはじめる</button>
+    <div class="error-box hidden" id="load-error">
+      問題データを読み込めませんでした。通信環境を確認して、ページを再読み込みしてください。
+    </div>
+    <p class="center" style="margin-top:18px;">
+      <button class="link-btn" id="btn-to-stats" type="button">集計ページ（管理用）</button>
+    </p>
+  </div>
+</div>
+
+<!-- ===== 出題画面 ===== -->
+<div class="wrap hidden" id="view-quiz">
+  <div class="card">
+    <div class="progress" id="quiz-progress"></div>
+    <div class="progress-bar"><div id="quiz-bar" style="width:0%"></div></div>
+    <div class="q-meta" id="quiz-meta"></div>
+    <div class="q-text" id="quiz-question"></div>
+    <div id="quiz-choices"></div>
+    <div class="explain" id="quiz-explain"></div>
+    <button class="btn hidden" id="btn-next" type="button">次の問題へ</button>
+  </div>
+</div>
+
+<!-- ===== 結果画面 ===== -->
+<div class="wrap hidden" id="view-result">
+  <div class="card">
+    <div class="bread-icon">🎉</div>
+    <p class="score-big" id="result-score"></p>
+    <p class="score-sub" id="result-sub"></p>
+    <p class="note center" id="result-save-note"></p>
+
+    <h2 class="section">カテゴリ別結果</h2>
+    <div id="result-by-category"></div>
+
+    <div id="result-review-wrap">
+      <h2 class="section">間違えた問題の見直し</h2>
+      <div id="result-review"></div>
+    </div>
+
+    <button class="btn" id="btn-share" type="button">結果を共有する</button>
+    <button class="btn secondary" id="btn-talknote" type="button">Talknoteに投稿する</button>
+    <button class="btn secondary hidden" id="btn-to-event" type="button">合宿の順位を見る</button>
+
+    <h2 class="section">ランキング（ベスト正答率）</h2>
+    <div id="result-ranking"><p class="note">読み込み中…</p></div>
+
+    <button class="btn secondary" id="btn-back-top" type="button">トップに戻る</button>
+  </div>
+</div>
+
+<!-- ===== 集計ページ ===== -->
+<div class="wrap hidden" id="view-stats">
+  <div class="card">
+    <h1 class="title" style="font-size:1.5rem;">集計ページ</h1>
+    <div id="stats-gate">
+      <label class="field-label" for="input-passcode">パスコード</label>
+      <input type="text" id="input-passcode" placeholder="パスコードを入力">
+      <button class="btn" id="btn-stats-open" type="button">開く</button>
+      <p class="note" id="stats-error"></p>
+    </div>
+    <div id="stats-body" class="hidden">
+      <h2 class="section">店舗別 平均正答率</h2>
+      <div id="stats-store"></div>
+      <h2 class="section">カテゴリ別 平均正答率</h2>
+      <div id="stats-category"></div>
+      <h2 class="section">レベル別 平均正答率</h2>
+      <div id="stats-level"></div>
+      <h2 class="section">受験履歴</h2>
+      <div id="stats-history" style="overflow-x:auto;"></div>
+    </div>
+    <button class="btn secondary" id="btn-stats-back" type="button">トップに戻る</button>
+  </div>
+</div>
+
+<!-- ===== 合宿順位画面 ===== -->
+<div class="wrap event-wrap hidden" id="view-event">
+  <p class="event-title">🏆 合宿ランキング</p>
+  <p class="event-sub" id="event-sub"></p>
+  <div class="event-card">
+    <h2>チーム戦（店舗別・平均点）</h2>
+    <div id="event-teams"></div>
+  </div>
+  <div class="event-card">
+    <h2>個人ランキング（上位10位）</h2>
+    <div id="event-individuals"></div>
+  </div>
+  <button class="btn secondary" id="btn-event-back" type="button">戻る</button>
+</div>
+
+<!-- ===== 出典全文モーダル ===== -->
+<div class="modal-bg" id="source-modal">
+  <div class="modal">
+    <h3 id="source-title"></h3>
+    <div class="date" id="source-date"></div>
+    <div class="body" id="source-body"></div>
+    <button class="btn" id="btn-source-close" type="button">閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   設定：GAS（Google Apps Script）をデプロイしたURLを
+   下の GAS_URL の '' の中に貼ってください（手順は SETUP.md）。
+   空のままでもクイズは遊べますが、結果の保存・ランキング・
+   集計・合宿順位は動きません。
+   ========================================================= */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxqyIZYWT_zUZFFyNv4vokAUweKGbRx0JzXWHtTC1nEIAL53QjQca3R-tyvu--G7CNL/exec';
+
+const TALKNOTE_MAIL = 'g-1000014754-329310@mail.talknote.com';
+const NAME_KEY = 'fuwafuwa-quiz-name';
+const CATEGORIES = ['全カテゴリ', '発酵と温度', '生地づくりの技術', 'グルテンと気泡', '焼成と仕上げ', '保存・販売とFLATのパン'];
+const LEVELS = ['初級', '中級', '上級'];
+
+let questionsData = null;   // questions.json の内容
+let sourcePosts = null;     // source-posts.json の内容
+
+const state = {
+  category: '全カテゴリ',
+  level: '初級',
+  campCode: '',
+  attempt: [],      // 出題された問題（選択肢シャッフル済み）
+  answers: [],      // {question, picked} の記録
+  current: 0,
+  answered: false
+};
+
+/* === CORE LOGIC START === */
+// 文字列 → 32bit ハッシュ（FNV-1a）
+function hashString(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+// 決定的乱数（mulberry32）
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// rng を使った Fisher-Yates シャッフル（元の配列は壊さない）
+function shuffleWith(rng, arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+// 出題プールから rng で抽選する
+// カテゴリ指定: そのカテゴリ×レベルの10問から5問 / 全カテゴリ: そのレベルの50問から10問
+function pickQuestions(allQuestions, category, level, rng) {
+  let pool;
+  let count;
+  if (category === '全カテゴリ') {
+    pool = allQuestions.filter(q => q.level === level);
+    count = 10;
+  } else {
+    pool = allQuestions.filter(q => q.category === category && q.level === level);
+    count = 5;
+  }
+  return shuffleWith(rng, pool).slice(0, Math.min(count, pool.length));
+}
+
+// 選択肢をシャッフルし、正解インデックスを付け替えた問題オブジェクトを返す
+function prepareQuestion(q, rng) {
+  const order = shuffleWith(rng, q.choices.map((_, i) => i));
+  return {
+    id: q.id, category: q.category, level: q.level, q: q.q,
+    explanation: q.explanation, source: q.source,
+    choices: order.map(i => q.choices[i]),
+    answer: order.indexOf(q.answer)
+  };
+}
+/* === CORE LOGIC END === */
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function fmtPct(n) {
+  const v = Math.round(Number(n) * 10) / 10;
+  return (Number.isInteger(v) ? String(v) : v.toFixed(1)) + '%';
+}
+function accuracyOf(correct, total) {
+  if (!total) return 0;
+  return Math.round((correct / total) * 1000) / 10;
+}
+function showView(id) {
+  ['view-start', 'view-quiz', 'view-result', 'view-stats', 'view-event'].forEach(v => {
+    document.getElementById(v).classList.toggle('hidden', v !== id);
+  });
+  window.scrollTo(0, 0);
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ---------- GAS 通信 ---------- */
+async function gasGet(params) {
+  if (!GAS_URL) throw new Error('GAS_URL未設定');
+  const url = GAS_URL + '?' + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  return res.json();
+}
+async function gasPostResult(payload) {
+  if (!GAS_URL) return { ok: false, skipped: true };
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+/* ---------- スタート画面 ---------- */
+function buildPills(containerId, items, current, onPick) {
+  const box = document.getElementById(containerId);
+  box.innerHTML = '';
+  items.forEach(item => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pill' + (item === current ? ' selected' : '');
+    b.textContent = item;
+    b.addEventListener('click', () => {
+      onPick(item);
+      buildPills(containerId, items, item, onPick);
+    });
+    box.appendChild(b);
+  });
+}
+
+let titleTapCount = 0;
+let titleTapTimer = null;
+function initStart() {
+  const nameInput = document.getElementById('input-name');
+  const saved = localStorage.getItem(NAME_KEY);
+  if (saved) nameInput.value = saved;
+
+  buildPills('category-group', CATEGORIES, state.category, v => { state.category = v; });
+  buildPills('level-group', LEVELS, state.level, v => { state.level = v; });
+
+  // 裏モード: タイトルを5回タップで合宿コード入力欄を表示
+  document.getElementById('app-title').addEventListener('click', () => {
+    titleTapCount += 1;
+    clearTimeout(titleTapTimer);
+    titleTapTimer = setTimeout(() => { titleTapCount = 0; }, 1600);
+    if (titleTapCount >= 5) {
+      titleTapCount = 0;
+      document.getElementById('camp-box').classList.toggle('open');
+    }
+  });
+
+  document.getElementById('btn-camp-off').addEventListener('click', () => {
+    document.getElementById('input-camp').value = '';
+    updateCampBadge();
+  });
+  document.getElementById('input-camp').addEventListener('input', updateCampBadge);
+  document.getElementById('btn-camp-rank').addEventListener('click', () => {
+    const code = document.getElementById('input-camp').value.trim();
+    if (!code) { toast('合宿コードを入力してください'); return; }
+    openEventView(code);
+  });
+
+  document.getElementById('btn-start').addEventListener('click', startQuiz);
+  document.getElementById('btn-to-stats').addEventListener('click', () => showView('view-stats'));
+}
+
+function updateCampBadge() {
+  const code = document.getElementById('input-camp').value.trim();
+  const badge = document.getElementById('camp-badge');
+  badge.textContent = code ? '🏕 合宿モード：コード「' + code + '」で参加中' : '';
+  badge.classList.toggle('on', !!code);
+}
+
+function startQuiz() {
+  if (!questionsData) { toast('問題データを読み込み中です'); return; }
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { toast('名前を入力してください'); return; }
+  localStorage.setItem(NAME_KEY, name);
+
+  state.campCode = document.getElementById('input-camp').value.trim();
+  const all = questionsData.questions;
+
+  let picked;
+  if (state.campCode) {
+    // 合宿モード: コードをシードに全員同じ問題セット（選択のみ決定的）
+    const seed = hashString(state.campCode + '|' + state.category + '|' + state.level);
+    picked = pickQuestions(all, state.category, state.level, mulberry32(seed));
+    // 出題順・選択肢順は各自シャッフル
+    state.attempt = shuffleWith(Math.random, picked).map(q => prepareQuestion(q, Math.random));
+  } else {
+    picked = pickQuestions(all, state.category, state.level, Math.random);
+    state.attempt = picked.map(q => prepareQuestion(q, Math.random));
+  }
+  state.answers = [];
+  state.current = 0;
+  showView('view-quiz');
+  renderQuestion();
+}
+
+/* ---------- 出題画面 ---------- */
+function renderQuestion() {
+  const q = state.attempt[state.current];
+  state.answered = false;
+  document.getElementById('quiz-progress').textContent =
+    '第' + (state.current + 1) + '問 / 全' + state.attempt.length + '問';
+  document.getElementById('quiz-bar').style.width =
+    ((state.current) / state.attempt.length * 100) + '%';
+  document.getElementById('quiz-meta').innerHTML =
+    '<span class="chip">' + esc(q.category) + '</span>' +
+    '<span class="chip">' + esc(q.level) + '</span>' +
+    (state.campCode ? '<span class="chip">🏕 合宿</span>' : '');
+  document.getElementById('quiz-question').textContent = q.q;
+
+  const box = document.getElementById('quiz-choices');
+  box.innerHTML = '';
+  q.choices.forEach((choice, idx) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'choice';
+    b.textContent = choice;
+    b.addEventListener('click', () => answerQuestion(idx));
+    box.appendChild(b);
+  });
+
+  const ex = document.getElementById('quiz-explain');
+  ex.className = 'explain';
+  ex.innerHTML = '';
+  const next = document.getElementById('btn-next');
+  next.classList.add('hidden');
+  next.textContent = (state.current === state.attempt.length - 1) ? '結果を見る' : '次の問題へ';
+}
+
+function answerQuestion(idx) {
+  if (state.answered) return;
+  state.answered = true;
+  const q = state.attempt[state.current];
+  const isCorrect = idx === q.answer;
+  state.answers.push({ question: q, picked: idx, correct: isCorrect });
+
+  const buttons = document.querySelectorAll('#quiz-choices .choice');
+  buttons.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.answer) b.classList.add('correct');
+    else if (i === idx) b.classList.add('wrong');
+  });
+
+  const ex = document.getElementById('quiz-explain');
+  ex.className = 'explain show ' + (isCorrect ? 'ok' : 'ng');
+  ex.innerHTML =
+    '<div class="verdict">' + (isCorrect ? '⭕ 正解！' : '❌ 不正解… 正解は「' + esc(q.choices[q.answer]) + '」') + '</div>' +
+    '<div>' + esc(q.explanation) + '</div>' +
+    '<div class="source-line">出典：' + esc(q.source) + '</div>';
+  const srcBtn = document.createElement('button');
+  srcBtn.type = 'button';
+  srcBtn.className = 'btn small secondary';
+  srcBtn.textContent = '出典の投稿を全文で見る';
+  srcBtn.addEventListener('click', () => openSourceModal(q.source));
+  ex.appendChild(srcBtn);
+
+  document.getElementById('quiz-bar').style.width =
+    ((state.current + 1) / state.attempt.length * 100) + '%';
+  document.getElementById('btn-next').classList.remove('hidden');
+}
+
+function openSourceModal(sourceTitle) {
+  const post = sourcePosts ? sourcePosts[sourceTitle] : null;
+  document.getElementById('source-title').textContent = sourceTitle;
+  let dateText = '';
+  if (post && post.heading) {
+    const m = post.heading.match(/\d{4}年\d{1,2}月\d{1,2}日/);
+    if (m) dateText = '投稿：' + m[0];
+  }
+  document.getElementById('source-date').textContent = dateText;
+  document.getElementById('source-body').textContent =
+    post ? post.body : '出典の全文データが見つかりませんでした。';
+  document.getElementById('source-modal').classList.add('open');
+}
+</script>
+
+<script>
+'use strict';
+/* ---------- 結果画面 ---------- */
+function shareText() {
+  const total = state.answers.length;
+  const correct = state.answers.filter(a => a.correct).length;
+  const name = localStorage.getItem(NAME_KEY) || document.getElementById('input-name').value.trim();
+  const store = document.getElementById('select-store').value;
+  let text = 'ふわふわパン教室クイズ／名前：' + name + '（' + store + '）' +
+    '／カテゴリ：' + state.category + '／レベル：' + state.level +
+    '／結果：' + total + '問中' + correct + '問正解（正答率' + fmtPct(accuracyOf(correct, total)) + '）';
+  if (state.campCode) text += '／合宿コード：' + state.campCode;
+  return text;
+}
+
+async function finishQuiz() {
+  const total = state.answers.length;
+  const correct = state.answers.filter(a => a.correct).length;
+  const acc = accuracyOf(correct, total);
+  const store = document.getElementById('select-store').value;
+  const name = localStorage.getItem(NAME_KEY) || '';
+
+  document.getElementById('result-score').textContent = total + '問中 ' + correct + '問正解';
+  document.getElementById('result-sub').textContent =
+    name + '（' + store + '）／' + state.category + '／' + state.level + '／正答率 ' + fmtPct(acc) +
+    (state.campCode ? '／🏕 合宿「' + state.campCode + '」' : '');
+
+  // カテゴリ別結果
+  const byCat = {};
+  state.answers.forEach(a => {
+    const c = a.question.category;
+    if (!byCat[c]) byCat[c] = { correct: 0, total: 0 };
+    byCat[c].total += 1;
+    if (a.correct) byCat[c].correct += 1;
+  });
+  let catHtml = '<table><tr><th>カテゴリ</th><th class="num">結果</th><th class="num">正答率</th></tr>';
+  Object.keys(byCat).forEach(c => {
+    catHtml += '<tr><td>' + esc(c) + '</td><td class="num">' + byCat[c].correct + '/' + byCat[c].total +
+      '</td><td class="num">' + fmtPct(accuracyOf(byCat[c].correct, byCat[c].total)) + '</td></tr>';
+  });
+  catHtml += '</table>';
+  document.getElementById('result-by-category').innerHTML = catHtml;
+
+  // 見直しリスト（間違えた問題のみ）
+  const wrong = state.answers.filter(a => !a.correct);
+  const reviewBox = document.getElementById('result-review');
+  if (wrong.length === 0) {
+    reviewBox.innerHTML = '<p>🎉 全問正解です！見直す問題はありません。</p>';
+  } else {
+    reviewBox.innerHTML = '';
+    wrong.forEach(a => {
+      const q = a.question;
+      const div = document.createElement('div');
+      div.className = 'review-item';
+      div.innerHTML =
+        '<div class="rq">' + esc(q.q) + '</div>' +
+        '<div class="ra">あなたの答え：' + esc(q.choices[a.picked]) + '</div>' +
+        '<div class="ra">正解：' + esc(q.choices[q.answer]) + '</div>' +
+        '<div class="ra">' + esc(q.explanation) + '</div>' +
+        '<div class="source-line">出典：' + esc(q.source) + '</div>';
+      const srcBtn = document.createElement('button');
+      srcBtn.type = 'button';
+      srcBtn.className = 'btn small secondary';
+      srcBtn.textContent = '出典の投稿を全文で見る';
+      srcBtn.addEventListener('click', () => openSourceModal(q.source));
+      div.appendChild(srcBtn);
+      reviewBox.appendChild(div);
+    });
+  }
+
+  document.getElementById('btn-to-event').classList.toggle('hidden', !state.campCode);
+  showView('view-result');
+
+  // 結果を保存
+  const note = document.getElementById('result-save-note');
+  const payload = {
+    datetime: new Date().toISOString(),
+    name: name,
+    store: store,
+    category: state.category,
+    level: state.level,
+    correct: correct,
+    total: total,
+    accuracy: acc,
+    mode: state.campCode ? '合宿' : '通常',
+    campCode: state.campCode || ''
+  };
+  try {
+    const r = await gasPostResult(payload);
+    note.textContent = r.ok ? '結果を保存しました' : (r.skipped ? '（結果の保存は未設定です）' : '結果の保存に失敗しました');
+  } catch (e) {
+    note.textContent = '結果の保存に失敗しました（通信エラー）';
+  }
+
+  loadRanking();
+}
+
+async function loadRanking() {
+  const box = document.getElementById('result-ranking');
+  if (!GAS_URL) {
+    box.innerHTML = '<p class="note">ランキングは準備中です（サーバー未設定）。</p>';
+    return;
+  }
+  try {
+    const data = await gasGet({ action: 'ranking' });
+    if (!data.ok || !data.ranking || data.ranking.length === 0) {
+      box.innerHTML = '<p class="note">まだ結果がありません。</p>';
+      return;
+    }
+    let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">ベスト正答率</th></tr>';
+    data.ranking.slice(0, 20).forEach((r, i) => {
+      html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
+        '</td><td>' + esc(r.store) + '</td><td class="num">' + fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '）</td></tr>';
+    });
+    html += '</table>';
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<p class="note">ランキングを読み込めませんでした。</p>';
+  }
+}
+
+/* ---------- 集計ページ ---------- */
+async function openStats() {
+  const passcode = document.getElementById('input-passcode').value.trim();
+  const errBox = document.getElementById('stats-error');
+  errBox.textContent = '';
+  if (!GAS_URL) { errBox.textContent = 'サーバー未設定のため集計は表示できません。'; return; }
+  try {
+    const data = await gasGet({ action: 'stats', passcode: passcode });
+    if (!data.ok) { errBox.textContent = data.error || '開けませんでした'; return; }
+    document.getElementById('stats-gate').classList.add('hidden');
+    document.getElementById('stats-body').classList.remove('hidden');
+    document.getElementById('stats-store').innerHTML = avgTable(data.byStore);
+    document.getElementById('stats-category').innerHTML = avgTable(data.byCategory);
+    document.getElementById('stats-level').innerHTML = avgTable(data.byLevel);
+    let html = '<table><tr><th>日時</th><th>名前</th><th>所属</th><th>カテゴリ</th><th>レベル</th><th class="num">正解</th><th class="num">正答率</th><th>モード</th></tr>';
+    data.history.slice().reverse().forEach(r => {
+      const d = new Date(r.datetime);
+      const ds = isNaN(d.getTime()) ? r.datetime : d.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      html += '<tr><td>' + esc(ds) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.store) + '</td><td>' +
+        esc(r.category) + '</td><td>' + esc(r.level) + '</td><td class="num">' + r.correct + '/' + r.total +
+        '</td><td class="num">' + fmtPct(r.accuracy) + '</td><td>' + esc(r.mode) + (r.campCode ? '（' + esc(r.campCode) + '）' : '') + '</td></tr>';
+    });
+    html += '</table>';
+    document.getElementById('stats-history').innerHTML = html;
+  } catch (e) {
+    errBox.textContent = '通信エラーで開けませんでした。';
+  }
+}
+function avgTable(rows) {
+  if (!rows || rows.length === 0) return '<p class="note">データなし</p>';
+  let html = '<table><tr><th>項目</th><th class="num">平均正答率</th><th class="num">受験回数</th></tr>';
+  rows.forEach(r => {
+    html += '<tr><td>' + esc(r.label) + '</td><td class="num">' + fmtPct(r.average) + '</td><td class="num">' + r.count + '回</td></tr>';
+  });
+  return html + '</table>';
+}
+
+/* ---------- 合宿順位画面 ---------- */
+async function openEventView(code) {
+  showView('view-event');
+  document.getElementById('event-sub').textContent = '合宿コード「' + code + '」';
+  const teamsBox = document.getElementById('event-teams');
+  const indivBox = document.getElementById('event-individuals');
+  teamsBox.innerHTML = '<p class="note">読み込み中…</p>';
+  indivBox.innerHTML = '';
+  if (!GAS_URL) {
+    teamsBox.innerHTML = '<p class="note">サーバー未設定のため順位は表示できません。</p>';
+    return;
+  }
+  try {
+    const data = await gasGet({ action: 'event', code: code });
+    if (!data.ok) {
+      teamsBox.innerHTML = '<p class="note">' + esc(data.error || '取得できませんでした') + '</p>';
+      return;
+    }
+    document.getElementById('event-sub').textContent =
+      '合宿コード「' + code + '」／参加 ' + data.participants + '人・' + data.attempts + '回受験';
+    if (!data.teams || data.teams.length === 0) {
+      teamsBox.innerHTML = '<p class="note">まだ結果がありません。</p>';
+    } else {
+      let html = '<table><tr><th>順位</th><th>店舗</th><th class="num">平均点</th><th class="num">人数</th></tr>';
+      data.teams.forEach((t, i) => {
+        html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(t.store) +
+          '</td><td class="num">' + fmtPct(t.average) + '</td><td class="num">' + t.members + '人</td></tr>';
+      });
+      teamsBox.innerHTML = html + '</table>';
+    }
+    if (!data.individuals || data.individuals.length === 0) {
+      indivBox.innerHTML = '<p class="note">まだ結果がありません。</p>';
+    } else {
+      let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">ベスト正答率</th></tr>';
+      data.individuals.forEach((r, i) => {
+        html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
+          '</td><td>' + esc(r.store) + '</td><td class="num">' + fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '）</td></tr>';
+      });
+      indivBox.innerHTML = html + '</table>';
+    }
+  } catch (e) {
+    teamsBox.innerHTML = '<p class="note">通信エラーで取得できませんでした。</p>';
+  }
+}
+
+/* ---------- 初期化 ---------- */
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (state.current < state.attempt.length - 1) {
+    state.current += 1;
+    renderQuestion();
+  } else {
+    finishQuiz();
+  }
+});
+document.getElementById('btn-share').addEventListener('click', async () => {
+  const text = shareText();
+  if (navigator.share) {
+    try { await navigator.share({ text: text }); } catch (e) { /* キャンセル時は何もしない */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('コピーしました');
+    } catch (e) {
+      toast('コピーできませんでした');
+    }
+  }
+});
+document.getElementById('btn-talknote').addEventListener('click', () => {
+  const subject = encodeURIComponent('ふわふわパン教室クイズの結果');
+  const body = encodeURIComponent(shareText().replace(/\n/g, '\r\n'));
+  location.href = 'mailto:' + TALKNOTE_MAIL + '?subject=' + subject + '&body=' + body;
+});
+document.getElementById('btn-to-event').addEventListener('click', () => {
+  if (state.campCode) openEventView(state.campCode);
+});
+document.getElementById('btn-back-top').addEventListener('click', () => showView('view-start'));
+document.getElementById('btn-stats-open').addEventListener('click', openStats);
+document.getElementById('btn-stats-back').addEventListener('click', () => showView('view-start'));
+document.getElementById('btn-event-back').addEventListener('click', () => showView('view-start'));
+document.getElementById('btn-source-close').addEventListener('click', () => {
+  document.getElementById('source-modal').classList.remove('open');
+});
+document.getElementById('source-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'source-modal') e.target.classList.remove('open');
+});
+
+(async function loadData() {
+  initStart();
+  try {
+    const [qRes, sRes] = await Promise.all([fetch('questions.json'), fetch('source-posts.json')]);
+    if (!qRes.ok || !sRes.ok) throw new Error('fetch failed');
+    questionsData = await qRes.json();
+    sourcePosts = await sRes.json();
+  } catch (e) {
+    document.getElementById('load-error').classList.remove('hidden');
+    document.getElementById('btn-start').disabled = true;
+  }
+})();
+</script>
+</body>
+</html>
