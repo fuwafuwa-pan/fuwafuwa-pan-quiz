@@ -133,6 +133,20 @@
   .rank-1{font-weight:900; color:var(--accent-dark);}
   .hidden{display:none !important;}
   .error-box{background:var(--bad-bg); border:2px solid var(--bad); border-radius:12px; padding:14px; margin-top:14px;}
+  /* my history */
+  .my-stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px;}
+  .my-stat{background:var(--card); border:2px solid var(--line); border-radius:14px; padding:12px; text-align:center;}
+  .my-stat .num{font-size:1.6rem; font-weight:900; color:var(--brown); line-height:1.2;}
+  .my-stat .lbl{font-size:.8rem; color:var(--ink-soft); font-weight:700;}
+  .trend{display:flex; align-items:flex-end; gap:5px; height:76px; padding:8px 4px 0;}
+  .trend .col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;}
+  .trend .bar{width:100%; max-width:26px; background:var(--accent); border-radius:5px 5px 0 0; min-height:4px;}
+  .trend .col.best .bar{background:var(--accent-dark);}
+  .trend .pct{font-size:.62rem; color:var(--ink-soft); margin-top:3px;}
+  .hist-row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 2px; border-bottom:1px solid var(--line);}
+  .hist-row .when{font-size:.78rem; color:var(--ink-soft);}
+  .hist-row .what{font-weight:700; font-size:.9rem;}
+  .hist-row .score{font-weight:900; color:var(--brown); white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -146,7 +160,7 @@
 
     <label class="field-label" for="input-name">名前（Talknoteに登録している名前）</label>
     <input type="text" id="input-name" placeholder="例：中島勇" autocomplete="name">
-    <p class="helper">集計のため、Talknoteに登録している名前で入力してください</p>
+    <p class="helper">集計のため、Talknoteに登録している名前で入力してください（スペースの有無や全角・半角の違いは自動でそろえます）</p>
 
     <label class="field-label" for="select-store">所属</label>
     <select id="select-store">
@@ -176,6 +190,8 @@
     <div class="pill-group" id="level-group"></div>
 
     <button class="btn" id="btn-start" type="button">クイズをはじめる</button>
+    <button class="btn secondary" id="btn-to-history" type="button">📈 過去の自分の成績を見る</button>
+    <button class="btn secondary" id="btn-to-ranking" type="button">🏆 ランキングを見る</button>
     <div class="error-box hidden" id="load-error">
       問題データを読み込めませんでした。通信環境を確認して、ページを再読み込みしてください。
     </div>
@@ -246,6 +262,24 @@
       <div id="stats-history" style="overflow-x:auto;"></div>
     </div>
     <button class="btn secondary" id="btn-stats-back" type="button">トップに戻る</button>
+  </div>
+</div>
+
+<!-- ===== ランキング画面 ===== -->
+<div class="wrap hidden" id="view-ranking">
+  <div class="card">
+    <h1 class="title" style="font-size:1.5rem;">🏆 ランキング（ベスト正答率）</h1>
+    <div id="home-ranking"><p class="note">読み込み中…</p></div>
+    <button class="btn secondary" id="btn-ranking-back" type="button">トップに戻る</button>
+  </div>
+</div>
+
+<!-- ===== 自分の成績画面 ===== -->
+<div class="wrap hidden" id="view-history">
+  <div class="card">
+    <h1 class="title" style="font-size:1.5rem;" id="history-title">自分の成績</h1>
+    <div id="history-body"><p class="note">読み込み中…</p></div>
+    <button class="btn secondary" id="btn-history-back" type="button">トップに戻る</button>
   </div>
 </div>
 
@@ -363,6 +397,9 @@ function prepareQuestion(q, rng) {
 }
 /* === CORE LOGIC END === */
 
+function normalizeName(s) {
+  return String(s || '').normalize('NFKC').replace(/\s+/g, '');
+}
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -377,7 +414,7 @@ function accuracyOf(correct, total) {
   return Math.round((correct / total) * 1000) / 10;
 }
 function showView(id) {
-  ['view-start', 'view-quiz', 'view-result', 'view-stats', 'view-event'].forEach(v => {
+  ['view-start', 'view-quiz', 'view-result', 'view-stats', 'view-event', 'view-history', 'view-ranking'].forEach(v => {
     document.getElementById(v).classList.toggle('hidden', v !== id);
   });
   window.scrollTo(0, 0);
@@ -457,6 +494,8 @@ function initStart() {
 
   document.getElementById('btn-start').addEventListener('click', startQuiz);
   document.getElementById('btn-to-stats').addEventListener('click', () => showView('view-stats'));
+  document.getElementById('btn-to-history').addEventListener('click', openHistory);
+  document.getElementById('btn-to-ranking').addEventListener('click', openRankingView);
 }
 
 function updateCampBadge() {
@@ -468,7 +507,7 @@ function updateCampBadge() {
 
 function startQuiz() {
   if (!questionsData) { toast('問題データを読み込み中です'); return; }
-  const name = document.getElementById('input-name').value.trim();
+  const name = normalizeName(document.getElementById('input-name').value);
   if (!name) { toast('名前を入力してください'); return; }
   localStorage.setItem(NAME_KEY, name);
 
@@ -670,11 +709,15 @@ async function finishQuiz() {
 }
 
 async function loadRanking() {
-  const box = document.getElementById('result-ranking');
+  renderRanking(document.getElementById('result-ranking'));
+}
+
+async function renderRanking(box) {
   if (!GAS_URL) {
     box.innerHTML = '<p class="note">ランキングは準備中です（サーバー未設定）。</p>';
     return;
   }
+  box.innerHTML = '<p class="note">読み込み中…</p>';
   try {
     const data = await gasGet({ action: 'ranking' });
     if (!data.ok || !data.ranking || data.ranking.length === 0) {
@@ -691,6 +734,11 @@ async function loadRanking() {
   } catch (e) {
     box.innerHTML = '<p class="note">ランキングを読み込めませんでした。</p>';
   }
+}
+
+function openRankingView() {
+  showView('view-ranking');
+  renderRanking(document.getElementById('home-ranking'));
 }
 
 /* ---------- 集計ページ ---------- */
@@ -731,6 +779,75 @@ function avgTable(rows) {
 }
 
 /* ---------- 合宿順位画面 ---------- */
+/* ---------- 自分の成績 ---------- */
+async function openHistory() {
+  const name = normalizeName(document.getElementById('input-name').value);
+  if (!name) { toast('まず名前を入力してください'); return; }
+  localStorage.setItem(NAME_KEY, name);
+  document.getElementById('history-title').textContent = name + ' さんの成績';
+  const box = document.getElementById('history-body');
+  box.innerHTML = '<p class="note">読み込み中…</p>';
+  showView('view-history');
+  if (!GAS_URL) { box.innerHTML = '<p class="note">サーバー未設定のため成績を表示できません。</p>'; return; }
+  try {
+    const data = await gasGet({ action: 'history', name });
+    if (!data.ok) { box.innerHTML = '<p class="note">読み込めませんでした。</p>'; return; }
+    renderHistory(data.history || []);
+  } catch (e) {
+    box.innerHTML = '<p class="note">読み込めませんでした。通信環境を確認してください。</p>';
+  }
+}
+
+function fmtWhen(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso || '');
+  return d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) + ' ' +
+    d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderHistory(rows) {
+  const box = document.getElementById('history-body');
+  if (rows.length === 0) {
+    box.innerHTML = '<p class="note">まだ記録がありません。クイズに挑戦すると、ここに成績がたまっていきます。</p>';
+    return;
+  }
+  const best = Math.max.apply(null, rows.map(r => r.accuracy));
+  const avg = Math.round(rows.reduce((s, r) => s + r.accuracy, 0) / rows.length * 10) / 10;
+  const bestByLevel = {};
+  rows.forEach(r => {
+    if (bestByLevel[r.level] === undefined || r.accuracy > bestByLevel[r.level]) bestByLevel[r.level] = r.accuracy;
+  });
+  let html = '<div class="my-stats">' +
+    '<div class="my-stat"><div class="num">' + rows.length + '回</div><div class="lbl">挑戦回数</div></div>' +
+    '<div class="my-stat"><div class="num">' + best + '%</div><div class="lbl">ベスト正答率</div></div>' +
+    '<div class="my-stat"><div class="num">' + avg + '%</div><div class="lbl">平均正答率</div></div>' +
+    '<div class="my-stat"><div class="num">' + rows[0].accuracy + '%</div><div class="lbl">最新の正答率</div></div>' +
+    '</div>';
+  html += '<p class="note">レベル別ベスト：' +
+    ['初級', '中級', '上級'].map(lv => lv + ' ' + (bestByLevel[lv] === undefined ? '—' : bestByLevel[lv] + '%')).join(' ／ ') + '</p>';
+
+  // 直近10回の推移（古い→新しい順）
+  const recent = rows.slice(0, 10).slice().reverse();
+  html += '<h2 class="section">最近の推移</h2><div class="trend">';
+  recent.forEach(r => {
+    html += '<div class="col' + (r.accuracy === best ? ' best' : '') + '">' +
+      '<div class="bar" style="height:' + Math.max(6, r.accuracy) + '%"></div>' +
+      '<div class="pct">' + r.accuracy + '%</div></div>';
+  });
+  html += '</div>';
+
+  html += '<h2 class="section">これまでの記録</h2>';
+  rows.slice(0, 30).forEach(r => {
+    const what = (r.mode === '合宿' ? '🏕 ' : '') +
+      (r.category === '全カテゴリ' ? '全カテゴリ' : r.category) + '・' + r.level;
+    html += '<div class="hist-row"><div><div class="what">' + esc(what) + '</div>' +
+      '<div class="when">' + esc(fmtWhen(r.datetime)) + '</div></div>' +
+      '<div class="score">' + r.correct + '/' + r.total + '問（' + r.accuracy + '%）</div></div>';
+  });
+  if (rows.length > 30) html += '<p class="note">直近30件を表示しています（全' + rows.length + '件）。</p>';
+  box.innerHTML = html;
+}
+
 async function openEventView(code) {
   showView('view-event');
   document.getElementById('event-sub').textContent = '合宿コード「' + code + '」';
@@ -809,6 +926,8 @@ document.getElementById('btn-back-top').addEventListener('click', () => showView
 document.getElementById('btn-stats-open').addEventListener('click', openStats);
 document.getElementById('btn-stats-back').addEventListener('click', () => showView('view-start'));
 document.getElementById('btn-event-back').addEventListener('click', () => showView('view-start'));
+document.getElementById('btn-history-back').addEventListener('click', () => showView('view-start'));
+document.getElementById('btn-ranking-back').addEventListener('click', () => showView('view-start'));
 document.getElementById('btn-source-close').addEventListener('click', () => {
   document.getElementById('source-modal').classList.remove('open');
 });
