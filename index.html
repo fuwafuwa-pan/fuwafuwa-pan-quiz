@@ -243,7 +243,7 @@
     <button class="btn secondary" id="btn-talknote" type="button">Talknoteに投稿する</button>
     <button class="btn secondary hidden" id="btn-to-event" type="button">合宿の順位を見る</button>
 
-    <h2 class="section">ランキング（ベスト正答率）</h2>
+    <h2 class="section">ランキング（累計正答率）</h2>
     <div id="result-ranking"><p class="note">読み込み中…</p></div>
 
     <button class="btn secondary" id="btn-back-top" type="button">トップに戻る</button>
@@ -277,7 +277,7 @@
 <!-- ===== ランキング画面 ===== -->
 <div class="wrap hidden" id="view-ranking">
   <div class="card">
-    <h1 class="title" style="font-size:1.5rem;">🏆 ランキング（ベスト正答率）</h1>
+    <h1 class="title" style="font-size:1.5rem;">🏆 ランキング（累計正答率）</h1>
     <div id="home-ranking"><p class="note">読み込み中…</p></div>
     <button class="btn secondary" id="btn-ranking-back" type="button">トップに戻る</button>
   </div>
@@ -733,7 +733,7 @@ async function renderRanking(box) {
       box.innerHTML = '<p class="note">まだ結果がありません。</p>';
       return;
     }
-    let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">ベスト正答率</th></tr>';
+    let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">累計正答率</th></tr>';
     data.ranking.slice(0, 20).forEach((r, i) => {
       html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
         '</td><td>' + esc(r.store) + '</td><td class="num">' + fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '）</td></tr>';
@@ -801,7 +801,15 @@ async function openHistory() {
   try {
     const data = await gasGet({ action: 'history', name });
     if (!data.ok) { box.innerHTML = '<p class="note">読み込めませんでした。</p>'; return; }
-    renderHistory(data.history || []);
+    let rankInfo = null;
+    try {
+      const rk = await gasGet({ action: 'ranking' });
+      if (rk.ok && rk.ranking) {
+        const idx = rk.ranking.findIndex(r => r.name === data.name);
+        if (idx >= 0) rankInfo = { pos: idx + 1, of: rk.ranking.length };
+      }
+    } catch (e) { /* 順位が取れなくても成績は表示する */ }
+    renderHistory(data.history || [], rankInfo);
   } catch (e) {
     box.innerHTML = '<p class="note">読み込めませんでした。通信環境を確認してください。</p>';
   }
@@ -814,32 +822,34 @@ function fmtWhen(iso) {
     d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 }
 
-function renderHistory(rows) {
+function renderHistory(rows, rankInfo) {
   const box = document.getElementById('history-body');
   if (rows.length === 0) {
     box.innerHTML = '<p class="note">まだ記録がありません。クイズに挑戦すると、ここに成績がたまっていきます。</p>';
     return;
   }
-  const best = Math.max.apply(null, rows.map(r => r.accuracy));
   const avg = Math.round(rows.reduce((s, r) => s + r.accuracy, 0) / rows.length * 10) / 10;
-  const bestByLevel = {};
+  const totalQ = rows.reduce((s, r) => s + (r.total || 0), 0);
+  const sumByLevel = {}, cntByLevel = {};
   rows.forEach(r => {
-    if (bestByLevel[r.level] === undefined || r.accuracy > bestByLevel[r.level]) bestByLevel[r.level] = r.accuracy;
+    sumByLevel[r.level] = (sumByLevel[r.level] || 0) + r.accuracy;
+    cntByLevel[r.level] = (cntByLevel[r.level] || 0) + 1;
   });
+  const avgByLevel = lv => cntByLevel[lv] ? Math.round(sumByLevel[lv] / cntByLevel[lv] * 10) / 10 + '%' : '—';
   let html = '<div class="my-stats">' +
     '<div class="my-stat"><div class="num">' + rows.length + '回</div><div class="lbl">挑戦回数</div></div>' +
-    '<div class="my-stat"><div class="num">' + best + '%</div><div class="lbl">ベスト正答率</div></div>' +
+    '<div class="my-stat"><div class="num">' + totalQ + '問</div><div class="lbl">通算で解いた問題数</div></div>' +
     '<div class="my-stat"><div class="num">' + avg + '%</div><div class="lbl">平均正答率</div></div>' +
-    '<div class="my-stat"><div class="num">' + rows[0].accuracy + '%</div><div class="lbl">最新の正答率</div></div>' +
+    '<div class="my-stat"><div class="num">' + (rankInfo ? rankInfo.pos + '位' : '―') + '</div><div class="lbl">現在の順位' + (rankInfo ? '（' + rankInfo.of + '人中）' : '') + '</div></div>' +
     '</div>';
-  html += '<p class="note">レベル別ベスト：' +
-    ['初級', '中級', '上級'].map(lv => lv + ' ' + (bestByLevel[lv] === undefined ? '—' : bestByLevel[lv] + '%')).join(' ／ ') + '</p>';
+  html += '<p class="note">レベル別平均：' +
+    ['初級', '中級', '上級'].map(lv => lv + ' ' + avgByLevel(lv)).join(' ／ ') + '</p>';
 
   // 直近10回の推移（古い→新しい順）
   const recent = rows.slice(0, 10).slice().reverse();
   html += '<h2 class="section">最近の推移</h2><div class="trend">';
   recent.forEach(r => {
-    html += '<div class="col' + (r.accuracy === best ? ' best' : '') + '">' +
+    html += '<div class="col' + (r.accuracy === 100 ? ' best' : '') + '">' +
       '<div class="bar" style="height:' + Math.max(6, r.accuracy) + '%"></div>' +
       '<div class="pct">' + r.accuracy + '%</div></div>';
   });
@@ -889,7 +899,7 @@ async function openEventView(code) {
     if (!data.individuals || data.individuals.length === 0) {
       indivBox.innerHTML = '<p class="note">まだ結果がありません。</p>';
     } else {
-      let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">ベスト正答率</th></tr>';
+      let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">累計正答率</th></tr>';
       data.individuals.forEach((r, i) => {
         html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
           '</td><td>' + esc(r.store) + '</td><td class="num">' + fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '）</td></tr>';
