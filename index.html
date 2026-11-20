@@ -386,6 +386,8 @@ function shuffleWith(rng, arr) {
 
 // 出題プールから rng で抽選する
 // カテゴリ指定: そのカテゴリ×レベルの10問から5問 / 全カテゴリ: そのレベルの50問から10問
+// ルール: 同じ問題は二度出ない（重複なし抽選）。さらに同じ出典（同じ回の投稿）からは
+// 1回のテストで1問までにする（出典が足りない場合のみ残りから補充する）
 function pickQuestions(allQuestions, category, level, rng) {
   let pool;
   let count;
@@ -396,7 +398,23 @@ function pickQuestions(allQuestions, category, level, rng) {
     pool = allQuestions.filter(q => q.category === category && q.level === level);
     count = 5;
   }
-  return shuffleWith(rng, pool).slice(0, Math.min(count, pool.length));
+  const shuffled = shuffleWith(rng, pool);
+  const picked = [];
+  const usedSources = new Set();
+  const rest = [];
+  for (const q of shuffled) {
+    if (picked.length < count && !usedSources.has(q.source)) {
+      picked.push(q);
+      usedSources.add(q.source);
+    } else {
+      rest.push(q);
+    }
+  }
+  for (const q of rest) {
+    if (picked.length >= count) break;
+    picked.push(q);
+  }
+  return picked;
 }
 
 // 選択肢をシャッフルし、正解インデックスを付け替えた問題オブジェクトを返す
