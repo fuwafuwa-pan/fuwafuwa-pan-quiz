@@ -80,6 +80,10 @@
   .progress-bar{height:10px; background:var(--chip); border-radius:99px; overflow:hidden; margin-bottom:16px;}
   .progress-bar > div{height:100%; background:var(--accent); transition:width .3s;}
   .q-meta{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .seg-wrap{display:flex; gap:8px; margin:10px 0;}
+  .seg{flex:1; padding:8px 10px; border-radius:999px; border:2px solid var(--brown);
+    background:#fff; color:var(--brown); font-weight:700; cursor:pointer; font-size:.95rem;}
+  .seg.active{background:var(--brown); color:#fff;}
   .chip{background:var(--chip); color:var(--brown); border-radius:999px; padding:2px 12px;
     font-size:.8rem; font-weight:700;}
   .q-text{font-size:1.2rem; font-weight:900; margin:6px 0 18px;}
@@ -243,7 +247,7 @@
     <button class="btn secondary" id="btn-talknote" type="button">Talknoteに投稿する</button>
     <button class="btn secondary hidden" id="btn-to-event" type="button">合宿の順位を見る</button>
 
-    <h2 class="section">ランキング（累計正答率）</h2>
+    <h2 class="section">ランキング</h2>
     <div id="result-ranking"><p class="note">読み込み中…</p></div>
 
     <button class="btn secondary" id="btn-back-top" type="button">トップに戻る</button>
@@ -277,7 +281,7 @@
 <!-- ===== ランキング画面 ===== -->
 <div class="wrap hidden" id="view-ranking">
   <div class="card">
-    <h1 class="title" style="font-size:1.5rem;">🏆 ランキング（累計正答率）</h1>
+    <h1 class="title" style="font-size:1.5rem;">🏆 ランキング</h1>
     <div id="home-ranking"><p class="note">読み込み中…</p></div>
     <button class="btn secondary" id="btn-ranking-back" type="button">トップに戻る</button>
   </div>
@@ -297,7 +301,7 @@
   <p class="event-title">🏆 合宿ランキング</p>
   <p class="event-sub" id="event-sub"></p>
   <div class="event-card">
-    <h2>チーム戦（店舗別・平均点）</h2>
+    <h2>チーム戦（店舗別・合計ポイント）</h2>
     <div id="event-teams"></div>
   </div>
   <div class="event-card">
@@ -331,6 +335,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxqyIZYWT_zUZFFyNv4vokA
 
 const TALKNOTE_MAIL = 'g-1000014754-329310@mail.talknote.com';
 const NAME_KEY = 'fuwafuwa-quiz-name';
+const LEVEL_POINTS = { '初級': 1, '中級': 2, '上級': 3 };
 const CATEGORIES = ['全カテゴリ', '発酵と温度', '生地づくりの技術', 'グルテンと気泡', '焼成と仕上げ', '保存・販売とFLATのパン'];
 const LEVELS = ['初級', '中級', '上級'];
 
@@ -643,8 +648,10 @@ async function finishQuiz() {
   const name = localStorage.getItem(NAME_KEY) || '';
 
   document.getElementById('result-score').textContent = total + '問中 ' + correct + '問正解';
+  const earnedPts = correct * (LEVEL_POINTS[state.level] || 1);
   document.getElementById('result-sub').textContent =
     name + '（' + store + '）／' + state.category + '／' + state.level + '／正答率 ' + fmtPct(acc) +
+    '／獲得ポイント +' + earnedPts + 'pt' +
     (state.campCode ? '／🏕 合宿「' + state.campCode + '」' : '');
 
   // カテゴリ別結果
@@ -721,6 +728,42 @@ async function loadRanking() {
   renderRanking(document.getElementById('result-ranking'));
 }
 
+function drawRankTable(list, mode, limit) {
+  const rows = list.slice();
+  if (mode === 'points') {
+    rows.sort((a, b) => (b.points - a.points) || (b.accuracy - a.accuracy) || (b.attempts - a.attempts));
+  } else {
+    rows.sort((a, b) => (b.accuracy - a.accuracy) || (b.correct - a.correct) || (b.attempts - a.attempts));
+  }
+  const head = mode === 'points' ? '獲得ポイント' : '累計正答率';
+  let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">' + head + '</th></tr>';
+  rows.slice(0, limit || 20).forEach((r, i) => {
+    const cell = mode === 'points'
+      ? (r.points || 0) + 'pt（正解' + r.correct + '問・' + r.attempts + '回）'
+      : fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '問・' + r.attempts + '回）';
+    html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
+      '</td><td>' + esc(r.store) + '</td><td class="num">' + cell + '</td></tr>';
+  });
+  return html + '</table>';
+}
+
+function paintRanking(box) {
+  const mode = box._rankMode || 'points';
+  box.innerHTML =
+    '<div class="seg-wrap">' +
+    '<button type="button" class="seg' + (mode === 'points' ? ' active' : '') + '" onclick="switchRankMode(\'' + box.id + '\',\'points\')">ポイント順</button>' +
+    '<button type="button" class="seg' + (mode === 'accuracy' ? ' active' : '') + '" onclick="switchRankMode(\'' + box.id + '\',\'accuracy\')">正答率順</button>' +
+    '</div><div class="rank-table"></div>';
+  box.querySelector('.rank-table').innerHTML = drawRankTable(box._rankData, mode, box._rankLimit || 20);
+}
+
+function switchRankMode(boxId, mode) {
+  const box = document.getElementById(boxId);
+  if (!box || !box._rankData) return;
+  box._rankMode = mode;
+  paintRanking(box);
+}
+
 async function renderRanking(box) {
   if (!GAS_URL) {
     box.innerHTML = '<p class="note">ランキングは準備中です（サーバー未設定）。</p>';
@@ -733,13 +776,10 @@ async function renderRanking(box) {
       box.innerHTML = '<p class="note">まだ結果がありません。</p>';
       return;
     }
-    let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">累計正答率</th></tr>';
-    data.ranking.slice(0, 20).forEach((r, i) => {
-      html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
-        '</td><td>' + esc(r.store) + '</td><td class="num">' + fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '）</td></tr>';
-    });
-    html += '</table>';
-    box.innerHTML = html;
+    box._rankData = data.ranking;
+    box._rankLimit = 20;
+    if (!box._rankMode) box._rankMode = 'points';
+    paintRanking(box);
   } catch (e) {
     box.innerHTML = '<p class="note">ランキングを読み込めませんでした。</p>';
   }
@@ -889,22 +929,20 @@ async function openEventView(code) {
     if (!data.teams || data.teams.length === 0) {
       teamsBox.innerHTML = '<p class="note">まだ結果がありません。</p>';
     } else {
-      let html = '<table><tr><th>順位</th><th>店舗</th><th class="num">平均点</th><th class="num">人数</th></tr>';
+      let html = '<table><tr><th>順位</th><th>店舗</th><th class="num">合計ポイント</th><th class="num">人数</th><th class="num">平均正答率</th></tr>';
       data.teams.forEach((t, i) => {
         html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(t.store) +
-          '</td><td class="num">' + fmtPct(t.average) + '</td><td class="num">' + t.members + '人</td></tr>';
+          '</td><td class="num">' + (t.points || 0) + 'pt</td><td class="num">' + t.members + '人</td><td class="num">' + fmtPct(t.average) + '</td></tr>';
       });
       teamsBox.innerHTML = html + '</table>';
     }
     if (!data.individuals || data.individuals.length === 0) {
       indivBox.innerHTML = '<p class="note">まだ結果がありません。</p>';
     } else {
-      let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">累計正答率</th></tr>';
-      data.individuals.forEach((r, i) => {
-        html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
-          '</td><td>' + esc(r.store) + '</td><td class="num">' + fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '）</td></tr>';
-      });
-      indivBox.innerHTML = html + '</table>';
+      indivBox._rankData = data.individuals;
+      indivBox._rankLimit = 10;
+      if (!indivBox._rankMode) indivBox._rankMode = 'points';
+      paintRanking(indivBox);
     }
   } catch (e) {
     teamsBox.innerHTML = '<p class="note">通信エラーで取得できませんでした。</p>';
