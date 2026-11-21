@@ -301,7 +301,7 @@
   <p class="event-title">🏆 合宿ランキング</p>
   <p class="event-sub" id="event-sub"></p>
   <div class="event-card">
-    <h2>チーム戦（店舗別・合計ポイント）</h2>
+    <h2>チーム戦（店舗別・平均正答率）</h2>
     <div id="event-teams"></div>
   </div>
   <div class="event-card">
@@ -947,10 +947,10 @@ async function openEventView(code) {
     if (!data.teams || data.teams.length === 0) {
       teamsBox.innerHTML = '<p class="note">まだ結果がありません。</p>';
     } else {
-      let html = '<table><tr><th>順位</th><th>店舗</th><th class="num">合計ポイント</th><th class="num">人数</th><th class="num">平均正答率</th></tr>';
+      let html = '<table><tr><th>順位</th><th>店舗</th><th class="num">平均正答率</th><th class="num">人数</th><th class="num">合計ポイント</th></tr>';
       data.teams.forEach((t, i) => {
         html += '<tr' + (i === 0 ? ' class="rank-1"' : '') + '><td>' + (i + 1) + '位</td><td>' + esc(t.store) +
-          '</td><td class="num">' + (t.points || 0) + 'pt</td><td class="num">' + t.members + '人</td><td class="num">' + fmtPct(t.average) + '</td></tr>';
+          '</td><td class="num">' + fmtPct(t.average) + '</td><td class="num">' + t.members + '人</td><td class="num">' + (t.points || 0) + 'pt</td></tr>';
       });
       teamsBox.innerHTML = html + '</table>';
     }
