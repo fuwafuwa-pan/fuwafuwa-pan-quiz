@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ふわふわパン教室クイズ大会</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF6E9; --card:#FFFDF8; --ink:#4A3220; --ink-soft:#7A5C3E;
+    --brown:#6B4226; --accent:#E8873A; --accent-dark:#C96A1E;
+    --good:#3E9B4F; --good-bg:#E6F5E9; --line:#EBD9BE; --chip:#F7E8CF;
+    --gold:#D4A017; --silver:#8A8D93; --bronze:#B87333;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+    line-height:1.6;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:20px 16px 48px;}
+  .card{
+    background:var(--card); border:2px solid var(--line); border-radius:20px;
+    padding:24px 20px; box-shadow:0 4px 14px rgba(107,66,38,.08);
+  }
+  h1.title{
+    text-align:center; font-size:2rem; font-weight:900; color:var(--brown);
+    margin:8px 0 2px;
+  }
+  .subtitle{text-align:center; color:var(--ink-soft); font-weight:700; margin:0 0 20px;}
+  label.field-label{display:block; font-weight:700; margin:18px 0 6px; color:var(--brown);}
+  .helper{font-size:.85rem; color:var(--ink-soft); margin:2px 0 0;}
+  input[type=text]{
+    width:100%; padding:14px; font-size:1.1rem; font-family:inherit;
+    border:2px solid var(--line); border-radius:12px; background:#fff; color:var(--ink);
+  }
+  input[type=text]:focus{outline:none; border-color:var(--accent);}
+  .btn{
+    display:block; width:100%; padding:14px; margin-top:22px; border:none; border-radius:14px;
+    background:var(--accent); color:#fff; font-family:inherit; font-size:1.1rem; font-weight:900;
+    cursor:pointer; box-shadow:0 3px 0 var(--accent-dark);
+  }
+  .btn:active{transform:translateY(2px); box-shadow:none;}
+  .btn.secondary{background:#fff; color:var(--brown); border:2px solid var(--brown); box-shadow:none;}
+  .btn.small{width:auto; display:inline-block; padding:9px 16px; font-size:.95rem; margin-top:10px;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .center{text-align:center;}
+  .note{font-size:.85rem; color:var(--ink-soft);}
+  .hidden{display:none !important;}
+  .toast{
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
+    background:var(--brown); color:#fff; padding:10px 22px; border-radius:999px; font-weight:700;
+    opacity:0; pointer-events:none; transition:all .25s; z-index:60;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  /* ---- オープニング ---- */
+  .opening{
+    min-height:70vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:24px 12px;
+  }
+  .opening .bread{font-size:5rem; line-height:1; animation:bob 1.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-14px) rotate(4deg);}}
+  .opening h1{
+    font-size:clamp(2rem,6vw,3.6rem); font-weight:900; color:var(--brown); margin:12px 0 4px;
+  }
+  .opening p{font-size:clamp(1rem,2.6vw,1.4rem); font-weight:700; color:var(--ink-soft); margin:4px 0;}
+  .countdown{
+    font-size:clamp(4rem,16vw,9rem); font-weight:900; color:var(--accent-dark); line-height:1.1;
+    min-height:1.2em;
+  }
+  .countdown.pop{animation:pop .9s ease;}
+  @keyframes pop{0%{transform:scale(.4); opacity:0;}30%{transform:scale(1.15); opacity:1;}100%{transform:scale(1); opacity:1;}}
+  /* ---- 大会ボード ---- */
+  .board-title{text-align:center; font-size:2.2rem; font-weight:900; color:var(--brown); margin:10px 0 2px;}
+  .board-sub{text-align:center; font-weight:700; color:var(--ink-soft); margin:0 0 18px; font-size:1.05rem;}
+  .board-card{background:var(--card); border:2px solid var(--line); border-radius:20px; padding:20px; margin-bottom:20px;}
+  .board-card h2{margin:0 0 10px; color:var(--brown); font-size:1.6rem;}
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:1.2rem;}
+  th, td{border-bottom:1px solid var(--line); padding:10px 8px; text-align:left; vertical-align:top;}
+  th{color:var(--brown); font-weight:900; white-space:nowrap;}
+  td.num, th.num{text-align:right; white-space:nowrap;}
+  .rank-1{font-weight:900; color:var(--accent-dark);}
+  .rank-2{font-weight:900; color:var(--silver);}
+  .rank-3{font-weight:900; color:var(--bronze);}
+  .seg-wrap{display:flex; gap:8px; margin:10px 0;}
+  .seg{flex:1; padding:10px; border-radius:999px; border:2px solid var(--brown);
+    background:#fff; color:var(--brown); font-weight:700; cursor:pointer; font-size:1rem; font-family:inherit;}
+  .seg.active{background:var(--brown); color:#fff;}
+  .live-dot{display:inline-block; width:.7em; height:.7em; border-radius:50%;
+    background:var(--good); margin-right:6px; animation:blink 1.6s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+  /* ---- 表彰式 ---- */
+  .podium{display:flex; gap:12px; align-items:flex-end; justify-content:center; margin:18px 0;}
+  .podium-step{
+    flex:1; max-width:220px; text-align:center; border:2px solid var(--line); border-radius:16px;
+    background:var(--card); padding:16px 10px; min-height:170px;
+  }
+  .podium-step.p1{border-color:var(--gold); background:#FFF8DC; min-height:210px;}
+  .podium-step.p2{border-color:var(--silver); min-height:190px;}
+  .podium-step.p3{border-color:var(--bronze); min-height:170px;}
+  .podium-step .place{font-size:2rem; font-weight:900;}
+  .podium-step.p1 .place{color:var(--gold);}
+  .podium-step.p2 .place{color:var(--silver);}
+  .podium-step.p3 .place{color:var(--bronze);}
+  .podium-step .who{font-size:1.3rem; font-weight:900; color:var(--brown); margin-top:6px;}
+  .podium-step .detail{font-size:1rem; color:var(--ink-soft); font-weight:700;}
+  .podium-step .yet{font-size:2.4rem; color:var(--line); font-weight:900;}
+  .podium-step.revealed{animation:pop .6s ease;}
+  .awards{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;}
+  .award{background:var(--card); border:2px solid var(--line); border-radius:16px; padding:16px; text-align:center;}
+  .award .icon{font-size:2rem;}
+  .award .name{font-weight:900; color:var(--brown); font-size:1.15rem; margin-top:4px;}
+  .award .who{font-size:1.1rem; font-weight:700; margin-top:2px;}
+  .award .detail{font-size:.9rem; color:var(--ink-soft); font-weight:700;}
+  @media (max-width:560px){
+    .podium{flex-direction:column; align-items:stretch;}
+    .podium-step{min-height:0 !important;}
+    .awards{grid-template-columns:1fr;}
+    table{font-size:1rem;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 設定画面 ===== -->
+<div class="wrap" id="screen-setup">
+  <div class="card">
+    <div class="center" style="font-size:2.6rem; line-height:1;">🏆🍞</div>
+    <h1 class="title">ふわふわパン教室クイズ大会</h1>
+    <p class="subtitle">年明けの全社合宿・大会モード（大画面表示専用）</p>
+    <label class="field-label" for="input-code">合宿コード</label>
+    <input type="text" id="input-code" placeholder="例：2027camp">
+    <p class="helper">参加者はいつものクイズ画面（スマホ）で同じ合宿コードを入れて解きます。このページはテレビ・プロジェクターへの表示専用で、ここからは回答できません。</p>
+    <button class="btn" id="btn-opening" type="button">オープニングをはじめる</button>
+    <button class="btn secondary" id="btn-board-direct" type="button">順位ボードだけ開く</button>
+    <p class="note center" style="margin-top:16px;">PCのブラウザで開き、HDMIでテレビやプロジェクターにつないで映します（F11で全画面）。パソコンの画面だけでもそのまま使えます。順位は30秒ごとに自動で更新されます。</p>
+  </div>
+</div>
+
+<!-- ===== オープニング画面 ===== -->
+<div class="wrap hidden" id="screen-opening">
+  <div class="opening">
+    <div class="bread">🍞</div>
+    <h1>ふわふわパン教室クイズ大会</h1>
+    <p id="opening-code"></p>
+    <p>全員同じ問題で、一斉スタート！</p>
+    <div class="countdown" id="countdown">3</div>
+    <p class="note">タップするとカウントダウンをスキップします</p>
+  </div>
+</div>
+
+<!-- ===== 順位ボード画面 ===== -->
+<div class="wrap hidden" id="screen-board">
+  <p class="board-title">🏆 大会ボード</p>
+  <p class="board-sub" id="board-sub"></p>
+  <div class="board-card">
+    <h2>チーム戦（店舗別・平均正答率）</h2>
+    <div id="board-teams"><p class="note">読み込み中…</p></div>
+  </div>
+  <div class="board-card">
+    <h2>個人ランキング（上位10位）</h2>
+    <div class="seg-wrap">
+      <button type="button" class="seg active" id="seg-points">ポイント順</button>
+      <button type="button" class="seg" id="seg-accuracy">正答率順</button>
+    </div>
+    <div id="board-individuals"><p class="note">読み込み中…</p></div>
+  </div>
+  <p class="note center" id="board-updated"></p>
+  <button class="btn" id="btn-refresh" type="button">🔄 今すぐ更新する</button>
+  <button class="btn secondary" id="btn-to-ceremony" type="button">🎉 表彰式へ進む</button>
+  <button class="btn secondary" id="btn-board-back" type="button">設定に戻る</button>
+</div>
+
+<!-- ===== 表彰式画面 ===== -->
+<div class="wrap hidden" id="screen-ceremony">
+  <p class="board-title">🎉 表彰式</p>
+  <p class="board-sub" id="ceremony-sub"></p>
+  <div class="podium">
+    <div class="podium-step p2" id="podium-2">
+      <div class="place">2位</div>
+      <div class="yet">？</div>
+    </div>
+    <div class="podium-step p1" id="podium-1">
+      <div class="place">🥇 1位</div>
+      <div class="yet">？</div>
+    </div>
+    <div class="podium-step p3" id="podium-3">
+      <div class="place">3位</div>
+      <div class="yet">？</div>
+    </div>
+  </div>
+  <button class="btn" id="btn-reveal" type="button">3位を発表する</button>
+  <div id="awards-wrap" class="hidden">
+    <div class="board-card">
+      <h2>特別賞</h2>
+      <div class="awards" id="awards"></div>
+    </div>
+  </div>
+  <button class="btn secondary" id="btn-ceremony-board" type="button">順位ボードに戻る</button>
+  <button class="btn secondary" id="btn-ceremony-back" type="button">設定に戻る</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* 大会モード（表示専用）。結果の保存や集計は既存の index.html + GAS を使う。
+   このページは GAS の event API（合宿コードごとの集計）だけを読みます。 */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxqyIZYWT_zUZFFyNv4vokAUweKGbRx0JzXWHtTC1nEIAL53QjQca3R-tyvu--G7CNL/exec';
+
+let code = '';
+let eventData = null;
+let rankMode = 'points';
+let refreshTimer = null;
+let revealStep = 0; // 0:未発表 → 1:3位 → 2:2位 → 3:1位
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function fmtPct(n) {
+  const v = Math.round(Number(n) * 10) / 10;
+  return (Number.isInteger(v) ? String(v) : v.toFixed(1)) + '%';
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+function showScreen(id) {
+  ['screen-setup', 'screen-opening', 'screen-board', 'screen-ceremony'].forEach(v => {
+    document.getElementById(v).classList.toggle('hidden', v !== id);
+  });
+  window.scrollTo(0, 0);
+  if (id === 'screen-board') startAutoRefresh();
+  else stopAutoRefresh();
+}
+function startAutoRefresh() {
+  stopAutoRefresh();
+  refreshTimer = setInterval(() => { loadBoard(true); }, 30000);
+}
+function stopAutoRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+}
+
+async function gasGet(params) {
+  const url = GAS_URL + '?' + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  return res.json();
+}
+
+/* ---------- オープニング ---------- */
+let countdownTimer = null;
+function startOpening() {
+  showScreen('screen-opening');
+  document.getElementById('opening-code').textContent = '合宿コード「' + code + '」';
+  const cd = document.getElementById('countdown');
+  const seq = ['3', '2', '1', 'スタート！'];
+  let i = 0;
+  cd.textContent = seq[0];
+  cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop');
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    i += 1;
+    if (i >= seq.length) {
+      clearInterval(countdownTimer);
+      openBoard();
+      return;
+    }
+    cd.textContent = seq[i];
+    cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop');
+  }, 1000);
+}
+document.getElementById('screen-opening').addEventListener('click', () => {
+  clearInterval(countdownTimer);
+  openBoard();
+});
+
+/* ---------- 順位ボード ---------- */
+function openBoard() {
+  showScreen('screen-board');
+  loadBoard(false);
+}
+
+async function loadBoard(silent) {
+  const teamsBox = document.getElementById('board-teams');
+  const indivBox = document.getElementById('board-individuals');
+  if (!silent) {
+    teamsBox.innerHTML = '<p class="note">読み込み中…</p>';
+    indivBox.innerHTML = '';
+  }
+  try {
+    const data = await gasGet({ action: 'event', code: code });
+    if (!data.ok) {
+      teamsBox.innerHTML = '<p class="note">' + esc(data.error || '取得できませんでした') + '</p>';
+      return;
+    }
+    eventData = data;
+    document.getElementById('board-sub').textContent =
+      '合宿コード「' + code + '」／参加 ' + data.participants + '人・' + data.attempts + '回受験';
+    document.getElementById('ceremony-sub').textContent =
+      '合宿コード「' + code + '」／参加 ' + data.participants + '人';
+    if (!data.teams || data.teams.length === 0) {
+      teamsBox.innerHTML = '<p class="note">まだ結果がありません。参加者の回答を待っています…</p>';
+    } else {
+      let html = '<table><tr><th>順位</th><th>店舗</th><th class="num">平均正答率</th><th class="num">人数</th><th class="num">合計ポイント</th></tr>';
+      data.teams.forEach((t, i) => {
+        const cls = i === 0 ? ' class="rank-1"' : (i === 1 ? ' class="rank-2"' : (i === 2 ? ' class="rank-3"' : ''));
+        html += '<tr' + cls + '><td>' + (i + 1) + '位</td><td>' + esc(t.store) +
+          '</td><td class="num">' + fmtPct(t.average) + '</td><td class="num">' + t.members + '人</td><td class="num">' + (t.points || 0) + 'pt</td></tr>';
+      });
+      teamsBox.innerHTML = html + '</table>';
+    }
+    paintIndividuals();
+    const now = new Date();
+    document.getElementById('board-updated').innerHTML =
+      '<span class="live-dot"></span>自動更新中（30秒ごと）／最終更新 ' +
+      now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch (e) {
+    if (!silent) teamsBox.innerHTML = '<p class="note">通信エラーで取得できませんでした。</p>';
+  }
+}
+
+function paintIndividuals() {
+  const box = document.getElementById('board-individuals');
+  if (!eventData || !eventData.individuals || eventData.individuals.length === 0) {
+    box.innerHTML = '<p class="note">まだ結果がありません。</p>';
+    return;
+  }
+  const rows = eventData.individuals.slice();
+  if (rankMode === 'points') {
+    rows.sort((a, b) => (b.points - a.points) || (b.accuracy - a.accuracy) || (b.attempts - a.attempts));
+  } else {
+    rows.sort((a, b) => (b.accuracy - a.accuracy) || (b.correct - a.correct) || (b.attempts - a.attempts));
+  }
+  const head = rankMode === 'points' ? '獲得ポイント' : '累計正答率';
+  let html = '<table><tr><th>順位</th><th>名前</th><th>所属</th><th class="num">' + head + '</th></tr>';
+  rows.slice(0, 10).forEach((r, i) => {
+    const cls = i === 0 ? ' class="rank-1"' : (i === 1 ? ' class="rank-2"' : (i === 2 ? ' class="rank-3"' : ''));
+    const cell = rankMode === 'points'
+      ? (r.points || 0) + 'pt（正解' + r.correct + '問・' + r.attempts + '回）'
+      : fmtPct(r.accuracy) + '（' + r.correct + '/' + r.total + '問・' + r.attempts + '回）';
+    html += '<tr' + cls + '><td>' + (i + 1) + '位</td><td>' + esc(r.name) +
+      '</td><td>' + esc(r.store) + '</td><td class="num">' + cell + '</td></tr>';
+  });
+  box.innerHTML = html + '</table>';
+}
+
+document.getElementById('seg-points').addEventListener('click', () => {
+  rankMode = 'points';
+  document.getElementById('seg-points').classList.add('active');
+  document.getElementById('seg-accuracy').classList.remove('active');
+  paintIndividuals();
+});
+document.getElementById('seg-accuracy').addEventListener('click', () => {
+  rankMode = 'accuracy';
+  document.getElementById('seg-accuracy').classList.add('active');
+  document.getElementById('seg-points').classList.remove('active');
+  paintIndividuals();
+});
+document.getElementById('btn-refresh').addEventListener('click', () => loadBoard(false));
+
+/* ---------- 表彰式 ---------- */
+function sortedIndividuals(mode) {
+  if (!eventData || !eventData.individuals) return [];
+  const rows = eventData.individuals.slice();
+  if (mode === 'points') rows.sort((a, b) => (b.points - a.points) || (b.accuracy - a.accuracy));
+  else rows.sort((a, b) => (b.accuracy - a.accuracy) || (b.correct - a.correct));
+  return rows;
+}
+function revealPodium(slot, person, placeLabel) {
+  const el = document.getElementById('podium-' + slot);
+  if (!person) {
+    el.innerHTML = '<div class="place">' + placeLabel + '</div><div class="detail">該当なし</div>';
+    return;
+  }
+  el.innerHTML =
+    '<div class="place">' + placeLabel + '</div>' +
+    '<div class="who">' + esc(person.name) + '</div>' +
+    '<div class="detail">' + esc(person.store) + '／' + (person.points || 0) + 'pt・' + fmtPct(person.accuracy) + '</div>';
+  el.classList.add('revealed');
+}
+function openCeremony() {
+  if (!eventData || !eventData.individuals || eventData.individuals.length === 0) {
+    toast('まだ結果がありません');
+    return;
+  }
+  revealStep = 0;
+  ['podium-1', 'podium-2', 'podium-3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('revealed');
+    const labels = ['🥇 1位', '2位', '3位'];
+    el.innerHTML = '<div class="place">' + labels[i] + '</div><div class="yet">？</div>';
+  });
+  document.getElementById('awards-wrap').classList.add('hidden');
+  document.getElementById('btn-reveal').textContent = '3位を発表する';
+  document.getElementById('btn-reveal').disabled = false;
+  showScreen('screen-ceremony');
+}
+document.getElementById('btn-reveal').addEventListener('click', () => {
+  const top = sortedIndividuals('points');
+  revealStep += 1;
+  const btn = document.getElementById('btn-reveal');
+  if (revealStep === 1) {
+    revealPodium(3, top[2], '3位');
+    btn.textContent = top[1] ? '2位を発表する' : '特別賞を見る';
+  } else if (revealStep === 2) {
+    revealPodium(2, top[1], '2位');
+    btn.textContent = '1位を発表する';
+  } else if (revealStep === 3) {
+    revealPodium(1, top[0], '🥇 1位');
+    btn.textContent = '特別賞を見る';
+  } else {
+    renderAwards();
+    document.getElementById('awards-wrap').classList.remove('hidden');
+    btn.disabled = true;
+  }
+});
+function renderAwards() {
+  const box = document.getElementById('awards');
+  const byPoints = sortedIndividuals('points');
+  const byAccuracy = sortedIndividuals('accuracy');
+  const cards = [];
+  if (eventData.teams && eventData.teams.length > 0) {
+    const t = eventData.teams[0];
+    cards.push({ icon: '🏆', name: 'チーム賞', who: t.store, detail: '平均正答率 ' + fmtPct(t.average) + '（' + t.members + '人）' });
+    const mostMembers = eventData.teams.slice().sort((a, b) => b.members - a.members)[0];
+    if (mostMembers && mostMembers.store !== t.store) {
+      cards.push({ icon: '👥', name: '参加人数最多店', who: mostMembers.store, detail: mostMembers.members + '人が参加' });
+    }
+  }
+  if (byAccuracy.length > 0) {
+    const a = byAccuracy[0];
+    cards.push({ icon: '🎯', name: '正答率賞', who: a.name, detail: '累計正答率 ' + fmtPct(a.accuracy) + '（' + a.correct + '/' + a.total + '問）' });
+  }
+  if (byPoints.length > 0) {
+    const m = byPoints.slice().sort((a, b) => b.attempts - a.attempts)[0];
+    cards.push({ icon: '🔥', name: '最多挑戦賞', who: m.name, detail: m.attempts + '回挑戦' });
+  }
+  box.innerHTML = cards.map(c =>
+    '<div class="award"><div class="icon">' + c.icon + '</div><div class="name">' + esc(c.name) +
+    '</div><div class="who">' + esc(c.who) + '</div><div class="detail">' + esc(c.detail) + '</div></div>'
+  ).join('');
+}
+
+/* ---------- 画面遷移 ---------- */
+function requireCode() {
+  const c = document.getElementById('input-code').value.trim();
+  if (!c) { toast('合宿コードを入力してください'); return null; }
+  return c;
+}
+document.getElementById('btn-opening').addEventListener('click', () => {
+  const c = requireCode();
+  if (!c) return;
+  code = c;
+  startOpening();
+});
+document.getElementById('btn-board-direct').addEventListener('click', () => {
+  const c = requireCode();
+  if (!c) return;
+  code = c;
+  openBoard();
+});
+document.getElementById('btn-to-ceremony').addEventListener('click', openCeremony);
+document.getElementById('btn-board-back').addEventListener('click', () => showScreen('screen-setup'));
+document.getElementById('btn-ceremony-board').addEventListener('click', openBoard);
+document.getElementById('btn-ceremony-back').addEventListener('click', () => showScreen('screen-setup'));
+</script>
+</body>
+</html>
